@@ -1,16 +1,21 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from app.schemas import AddressRequest, AddressResponse, StandardizedAddress
 from app.services.validate_address_service import validate_address as validate_address_service
 from app.services.input_processor import AddressInputProcessor
+from app.core.dependencies import validate_api_key
 
-app = FastAPI(title="Address Validation Service")
+app = FastAPI(
+    title="Address Validation Service",
+    description="Microservice to validate and standardize US addresses.",
+    version="0.1.0",
+)
 input_processor = AddressInputProcessor()
 
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
 
-@app.post("/validate-address", response_model=AddressResponse)
+@app.post("/validate-address", response_model=AddressResponse, dependencies=[Depends(validate_api_key)])
 async def validate_address(request: AddressRequest):
     # Step 1: Process Input (Sanitize, Validate, Normalize)
     processing_result = input_processor.process(request.address_raw)
