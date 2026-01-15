@@ -16,3 +16,16 @@ async def test_validate_address():
     if data.get("valid"):
         assert isinstance(data["standardized"], dict)
         assert "street" in data["standardized"]
+
+@pytest.mark.asyncio
+async def test_validate_address_invalid_input():
+    # Test "Fail Fast" behavior
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # Input too short (< 5 chars)
+        response = await ac.post("/validate-address", json={"address_raw": "123"})
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["valid"] is False
+    assert data["standardized"] is None
