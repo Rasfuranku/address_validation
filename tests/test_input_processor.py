@@ -91,3 +91,43 @@ class TestNormalization:
         # Normalize: lower -> remove punct -> collapse space -> expand
         # "123 main st 4b" -> "123 main street 4b"
         assert result.canonical_key == "123 main street 4b"
+
+    def test_leading_zip_code(self, processor):
+        # "07055 130 jackson st" -> "130 jackson st 07055"
+        input_str = "07055 130 jackson st"
+        result = processor.process(input_str)
+        
+        assert result.is_valid
+        # Logic should move zip to end for canonical key AND sanitized input
+        assert result.sanitized_input == "130 jackson st 07055"
+        assert result.canonical_key == "130 jackson street 07055"
+
+    def test_zip_in_middle(self, processor):
+        # "130 07055 jackson st" -> "130 jackson st 07055"
+        input_str = "130 07055 jackson st"
+        result = processor.process(input_str)
+        assert result.sanitized_input == "130 jackson st 07055"
+
+    def test_zip_at_end_stays(self, processor):
+        # "130 jackson st 07055" -> "130 jackson st 07055"
+        input_str = "130 jackson st 07055"
+        result = processor.process(input_str)
+        assert result.sanitized_input == "130 jackson st 07055"
+
+    def test_house_number_vs_zip(self, processor):
+        # "12345 Main St" -> Should treat 12345 as house number, not zip (no move)
+        input_str = "12345 Main St"
+        result = processor.process(input_str)
+        assert result.sanitized_input == "12345 Main St"
+
+    def test_leading_zip_with_house_number(self, processor):
+        # "90210 123 Main St" -> Move 90210 to end
+        input_str = "90210 123 Main St"
+        result = processor.process(input_str)
+        assert result.sanitized_input == "123 Main St 90210"
+
+    def test_two_five_digit_numbers(self, processor):
+        # "12345 Main St 54321" -> Assume last is zip, first is house. No change.
+        input_str = "12345 Main St 54321"
+        result = processor.process(input_str)
+        assert result.sanitized_input == "12345 Main St 54321"

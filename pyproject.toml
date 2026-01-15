@@ -13,6 +13,7 @@ dependencies = [
     "redis",
     "asyncpg",
     "smartystreets-python-sdk>=4.24.1",
+    "usaddress>=0.5.16",
 ]
 
 [project.optional-dependencies]
