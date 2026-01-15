@@ -27,7 +27,13 @@ A Python microservice for validating and standardizing US property addresses usi
 ### Local Development Setup
 
 1. **Clone the repository**
-2. **Install dependencies:**
+2. **Configure Environment Variables:**
+   ```bash
+   cp .env.example .env
+   ```
+   *Update the `.env` file with your actual credentials.*
+
+3. **Install dependencies:**
    ```bash
    uv venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
