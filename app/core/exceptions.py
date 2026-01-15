@@ -1,0 +1,2 @@
+class DailyQuotaExceededError(Exception):
+    pass

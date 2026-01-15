@@ -1,21 +1,34 @@
 from smartystreets_python_sdk import StaticCredentials, ClientBuilder
 from smartystreets_python_sdk.us_street import Lookup as StreetLookup
 from app.core.config import settings
+from app.core.exceptions import DailyQuotaExceededError
+from redis.asyncio import Redis
+from datetime import datetime, timezone
 import usaddress
+import asyncio
 
-def validate_address(address_raw: str):
+async def validate_address(address_raw: str, redis: Redis):
+    # 1. Quota Check
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    quota_key = f"smarty_quota:{today}"
+    
+    count = await redis.incr(quota_key)
+    if count == 1:
+        await redis.expire(quota_key, 86400)
+        
+    if count > settings.SMARTY_DAILY_LIMIT:
+        await redis.decr(quota_key) # Revert increment
+        raise DailyQuotaExceededError("Daily validation quota exceeded.")
+
     auth_id = settings.SMARTY_AUTH_ID
     auth_token = settings.SMARTY_AUTH_TOKEN
     
     if not auth_id or not auth_token:
-        # Handle missing credentials gracefully, or let it fail if critical
         pass
 
     credentials = StaticCredentials(auth_id, auth_token)
     client = ClientBuilder(credentials).build_us_street_api_client()
 
-
-    
     lookup = StreetLookup()
     # lookup.match = "enhanced" # Optional, if using enhanced matching
 
@@ -37,9 +50,6 @@ def validate_address(address_raw: str):
             elif label != 'CountryName': # Ignore country if present, assume US
                 street_parts.append(val)
 
-        # Smarty works best if you give it what you have.
-        # If we found components, use them. 
-        # If street_parts is empty but we have raw text, fall back to raw text for street.
         lookup.street = " ".join(street_parts).strip() if street_parts else address_raw
         lookup.city = " ".join(city_parts).strip()
         lookup.state = " ".join(state_parts).strip()
@@ -51,8 +61,10 @@ def validate_address(address_raw: str):
         lookup.street = address_raw
 
     lookup.candidates = 1
+    
     try:
-        client.send_lookup(lookup)
+        # Run blocking call in thread pool
+        await asyncio.to_thread(client.send_lookup, lookup)
     except Exception as e:
         # Log error
         print(f"Error calling Smarty: {e}")
