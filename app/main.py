@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from app.schemas import AddressRequest, AddressResponse, StandardizedAddress
 from app.services.validate_address_service import validate_address as validate_address_service
 from app.services.input_processor import AddressInputProcessor
+from app.services.cache_service import AddressCacheService
 from app.core.dependencies import validate_api_key, get_redis
 from app.core.exceptions import DailyQuotaExceededError
 from app.core.logging import setup_logging
@@ -46,8 +47,21 @@ async def validate_address(request: AddressRequest, redis: Redis = Depends(get_r
             standardized=None
         )
 
-    # Step 2: External Validation (Smarty) using the sanitized input
-    # We could also use processing_result.canonical_key for caching in the future
+    # Step 2: Caching Layer
+    # Use sanitized input for cache key generation to ensure consistency
+    cache_service = AddressCacheService(redis)
+    cached_data = await cache_service.get_cached_address(processing_result.sanitized_input)
+    
+    if cached_data:
+        # Cache Hit
+        standardized_address = StandardizedAddress(**cached_data)
+        return AddressResponse(
+            address_raw=request.address_raw, 
+            valid=True, 
+            standardized=standardized_address
+        )
+
+    # Step 3: External Validation (Smarty)
     result = await validate_address_service(processing_result.sanitized_input, redis)
     
     if result is None:
@@ -60,4 +74,8 @@ async def validate_address(request: AddressRequest, redis: Redis = Depends(get_r
         state=result.components.state_abbreviation,
         zip_code=result.components.zipcode + "-" + result.components.plus4_code
     )
+    
+    # Step 4: Store in Cache
+    await cache_service.cache_address(processing_result.sanitized_input, standardized_address)
+    
     return AddressResponse(address_raw=request.address_raw, valid=True, standardized=standardized_address)
