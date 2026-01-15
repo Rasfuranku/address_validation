@@ -1,8 +1,7 @@
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from app.services.cache_service import AddressCacheService
+from unittest.mock import patch, AsyncMock
 from app.main import validate_address
-from app.schemas import AddressRequest
+from app.schemas import AddressRequest, StandardizedAddress
 
 @pytest.mark.asyncio
 @patch("app.main.validate_address_service")
@@ -19,14 +18,13 @@ async def test_caching_logic(mock_processor, mock_validate_service):
     # Redis get returns None
     mock_redis.get.return_value = None
     
-    # Mock Service Result (Candidate)
-    mock_candidate = MagicMock()
-    mock_candidate.delivery_line_1 = "123 Main St"
-    mock_candidate.components.city_name = "City"
-    mock_candidate.components.state_abbreviation = "ST"
-    mock_candidate.components.zipcode = "12345"
-    mock_candidate.components.plus4_code = "6789"
-    mock_validate_service.return_value = mock_candidate
+    # Mock Service Result (StandardizedAddress)
+    mock_validate_service.return_value = StandardizedAddress(
+        street="123 Main St",
+        city="City",
+        state="ST",
+        zip_code="12345-6789"
+    )
     
     request = AddressRequest(address_raw="123 Main St")
     
@@ -55,4 +53,5 @@ async def test_caching_logic(mock_processor, mock_validate_service):
     mock_validate_service.assert_not_called() # SHOULD NOT CALL SERVICE
     mock_redis.set.assert_not_called() # No need to set
     
-    assert response.standardized.city == "City"
+    assert response.success is True
+    assert response.data.standardized.city == "City"
