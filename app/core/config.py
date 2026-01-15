@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     SMARTY_AUTH_ID: str = ""
     SMARTY_AUTH_TOKEN: str = ""
     SMARTY_DAILY_LIMIT: int = 33
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     SMARTY_WEBSITE_DOMAIN: str = "http:localhost:8000"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

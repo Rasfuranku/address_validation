@@ -1,16 +1,24 @@
 from fastapi import FastAPI, Depends, Request
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 from app.schemas import AddressRequest, AddressResponse, StandardizedAddress
 from app.services.validate_address_service import validate_address as validate_address_service
 from app.services.input_processor import AddressInputProcessor
 from app.core.dependencies import validate_api_key, get_redis
 from app.core.exceptions import DailyQuotaExceededError
+from app.core.logging import setup_logging
 from redis.asyncio import Redis
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    setup_logging()
+    yield
 
 app = FastAPI(
     title="Address Validation Service",
     description="Microservice to validate and standardize US addresses.",
     version="0.1.0",
+    lifespan=lifespan
 )
 input_processor = AddressInputProcessor()
 

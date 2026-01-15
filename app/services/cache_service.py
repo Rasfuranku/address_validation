@@ -1,8 +1,11 @@
 import hashlib
 import json
 import re
+import logging
 from redis.asyncio import Redis
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 class AddressCacheService:
     def __init__(self, redis_client: Redis):
@@ -43,10 +46,12 @@ class AddressCacheService:
         try:
             data = await self.redis.get(key)
             if data:
+                logger.info("Cache HIT for key: %s", key)
                 return json.loads(data)
+            logger.info("Cache MISS for key: %s", key)
         except Exception as e:
             # Resilience: Log error and return None (fail open)
-            print(f"Cache get failed: {e}")
+            logger.warning("Redis connection failed: %s", e)
             return None
         return None
 
@@ -63,4 +68,4 @@ class AddressCacheService:
             await self.redis.set(key, value, ex=2592000)
         except Exception as e:
             # Resilience: Log error and continue
-            print(f"Cache set failed: {e}")
+            logger.warning("Redis set failed: %s", e)

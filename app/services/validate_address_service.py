@@ -6,6 +6,9 @@ from redis.asyncio import Redis
 from datetime import datetime, timezone
 import usaddress
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def validate_address(address_raw: str, redis: Redis):
     # 1. Quota Check
@@ -57,17 +60,18 @@ async def validate_address(address_raw: str, redis: Redis):
         
     except Exception as e:
         # Fallback on error
-        print(f"Error parsing address locally: {e}")
+        logger.warning("Error parsing address locally: %s", e, exc_info=True)
         lookup.street = address_raw
 
     lookup.candidates = 1
     
+    logger.info("Calling Smarty API for address: %s", address_raw)
     try:
         # Run blocking call in thread pool
         await asyncio.to_thread(client.send_lookup, lookup)
     except Exception as e:
         # Log error
-        print(f"Error calling Smarty: {e}")
+        logger.error("Error calling Smarty: %s", e, exc_info=True)
         return None
 
     if lookup.result:
@@ -75,7 +79,7 @@ async def validate_address(address_raw: str, redis: Redis):
         # Return structured data or the candidate object
         is_corrected = candidate.analysis.dpv_match_code == "Y" and \
             candidate.delivery_line_1.lower() != address_raw.lower()
-        print(f"Address corrected: {is_corrected}")
+        logger.info("Address corrected: %s", is_corrected)
         candidate.is_corrected = is_corrected
         return candidate
     return None
