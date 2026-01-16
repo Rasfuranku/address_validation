@@ -36,26 +36,26 @@ def assert_error_response(response, status_code, error_type_fragment):
 async def test_timeout_error():
     # Patch the service to raise the custom exception
     # Assuming refactoring maps this exception
-    with patch("app.main.validate_address_service", side_effect=ProviderTimeoutError("Timeout")):
-        response = client.post("/validate-address", json={"address_raw": "123 Timeout"})
+    with patch("app.api.v1.endpoints.address.validate_address_service", side_effect=ProviderTimeoutError("Timeout")):
+        response = client.post("/v1/validate-address", json={"address_raw": "123 Timeout"})
         assert_error_response(response, 504, "provider_timeout")
 
 @pytest.mark.asyncio
 async def test_provider_error():
-    with patch("app.main.validate_address_service", side_effect=AddressProviderError("Upstream Error")):
-        response = client.post("/validate-address", json={"address_raw": "123 Error"})
+    with patch("app.api.v1.endpoints.address.validate_address_service", side_effect=AddressProviderError("Upstream Error")):
+        response = client.post("/v1/validate-address", json={"address_raw": "123 Error"})
         assert_error_response(response, 502, "provider_error")
 
 @pytest.mark.asyncio
 async def test_quota_error():
-    with patch("app.main.validate_address_service", side_effect=DailyQuotaExceededError("Quota")):
-        response = client.post("/validate-address", json={"address_raw": "123 Quota"})
+    with patch("app.api.v1.endpoints.address.validate_address_service", side_effect=DailyQuotaExceededError("Quota")):
+        response = client.post("/v1/validate-address", json={"address_raw": "123 Quota"})
         assert_error_response(response, 429, "quota_exceeded")
 
 @pytest.mark.asyncio
 async def test_validation_error():
     # Missing field
-    response = client.post("/validate-address", json={})
+    response = client.post("/v1/validate-address", json={})
     # Pydantic raises RequestValidationError
     # We want standardized response
     assert response.status_code == 422 # Default FastAPI, unless mapped to 400
@@ -65,6 +65,6 @@ async def test_validation_error():
 
 @pytest.mark.asyncio
 async def test_generic_exception():
-    with patch("app.main.validate_address_service", side_effect=Exception("Boom")):
-        response = client.post("/validate-address", json={"address_raw": "123 Boom"})
+    with patch("app.api.v1.endpoints.address.validate_address_service", side_effect=Exception("Boom")):
+        response = client.post("/v1/validate-address", json={"address_raw": "123 Boom"})
         assert_error_response(response, 500, "server_error")

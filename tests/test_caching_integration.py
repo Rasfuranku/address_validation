@@ -1,11 +1,12 @@
 import pytest
-from unittest.mock import patch, AsyncMock
-from app.main import validate_address
+from unittest.mock import patch, MagicMock, AsyncMock
+from app.services.cache_service import AddressCacheService
+from app.api.v1.endpoints.address import validate_address
 from app.schemas import AddressRequest, StandardizedAddress
 
 @pytest.mark.asyncio
-@patch("app.main.validate_address_service")
-@patch("app.main.input_processor")
+@patch("app.api.v1.endpoints.address.validate_address_service")
+@patch("app.api.v1.endpoints.address.input_processor")
 async def test_caching_logic(mock_processor, mock_validate_service):
     # Setup
     mock_redis = AsyncMock()

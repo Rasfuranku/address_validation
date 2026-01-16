@@ -22,7 +22,7 @@ def override_deps(mock_redis):
 @pytest.mark.asyncio
 async def test_validate_address(mock_redis):
     # Patch the service call to avoid real API/Redis logic in this integration test
-    with patch("app.main.validate_address_service", new_callable=AsyncMock) as mock_service:
+    with patch("app.api.v1.endpoints.address.validate_address_service", new_callable=AsyncMock) as mock_service:
         # Mock return value from service
         mock_service.return_value = StandardizedAddress(
             street="123 Main St",
@@ -33,7 +33,7 @@ async def test_validate_address(mock_redis):
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            response = await ac.post("/validate-address", json={"address_raw": "123 Main St"})
+            response = await ac.post("/v1/validate-address", json={"address_raw": "123 Main St"})
         
         assert response.status_code == 200
         data = response.json()
@@ -48,7 +48,7 @@ async def test_validate_address_invalid_input():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Input too short (< 5 chars)
-        response = await ac.post("/validate-address", json={"address_raw": "123"})
+        response = await ac.post("/v1/validate-address", json={"address_raw": "123"})
     
     assert response.status_code == 200
     data = response.json()
